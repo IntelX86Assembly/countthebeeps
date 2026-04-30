@@ -104,6 +104,8 @@ let round = 0;
 let score = 0;
 const MAX_ROUNDS = 20;
 
+let gameOver = false;
+
 /* ---------- SOUND ---------- */
 
 function playBeep(time) {
@@ -162,9 +164,11 @@ function generatePattern(count) {
 /* ---------- ROUND ---------- */
 
 async function playRound() {
+  if (gameOver) return;
+  if (roundActive) return;
+
   if (round >= MAX_ROUNDS) {
-    document.getElementById("status").textContent =
-      `Game over! Final score: ${score}/${MAX_ROUNDS}`;
+    endGame();
     return;
   }
 
@@ -188,6 +192,30 @@ async function playRound() {
     "How many beeps?";
 }
 
+/* ---------- END GAME ---------- */
+
+function endGame() {
+  gameOver = true;
+  roundActive = false;
+
+  document.getElementById("status").textContent =
+    `Game over! Score: ${score}/${MAX_ROUNDS}. Press SPACE to restart.`;
+}
+
+/* ---------- RESET GAME ---------- */
+
+function resetGame() {
+  round = 0;
+  score = 0;
+  gameOver = false;
+  roundActive = false;
+
+  document.getElementById("status").textContent =
+    "Restarted! Press SPACE to play";
+
+  updateUI();
+}
+
 /* ---------- FEEDBACK ---------- */
 
 function flash(correct) {
@@ -201,7 +229,7 @@ function flash(correct) {
 /* ---------- GUESS ---------- */
 
 function guess(n) {
-  if (!roundActive) return;
+  if (!roundActive || gameOver) return;
 
   const correct = (n === correctAnswer);
 
@@ -209,10 +237,10 @@ function guess(n) {
 
   if (correct) {
     score++;
-    minGap *= 0.92; // harder
+    minGap *= 0.92;
     document.getElementById("status").textContent = "Correct!";
   } else {
-    minGap *= 1.08; // easier (FIXED RESTORED BEHAVIOR)
+    minGap *= 1.08;
     document.getElementById("status").textContent =
       "Wrong! It was " + correctAnswer;
   }
@@ -224,8 +252,7 @@ function guess(n) {
 
   setTimeout(() => {
     if (round >= MAX_ROUNDS) {
-      document.getElementById("status").textContent =
-        `Game complete! Score: ${score}/${MAX_ROUNDS}`;
+      endGame();
     } else {
       document.getElementById("status").textContent =
         "Press SPACE for next round";
@@ -247,8 +274,14 @@ document.addEventListener("keydown", async (e) => {
   await audioCtx.resume();
 
   if (e.code === "Space") {
+    if (gameOver) {
+      resetGame();
+      return;
+    }
     playRound();
   }
+
+  if (!roundActive || gameOver) return;
 
   if (["Digit2","Digit3","Digit4","Digit5","Digit6"].includes(e.code)) {
     guess(parseInt(e.key));
