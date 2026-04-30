@@ -31,10 +31,10 @@
     margin-bottom: 6px;
   }
 
-  #difficulty {
+  #difficulty, #round {
     font-size: 0.9rem;
-    opacity: 0.8;
-    margin-bottom: 10px;
+    opacity: 0.85;
+    margin-bottom: 6px;
   }
 
   button {
@@ -67,16 +67,16 @@
   .wrong { background: #a00 !important; }
 </style>
 </head>
+
 <body>
 
 <div id="game">
   <h1>Beeps Count</h1>
 
-  <div id="info">
-    Guess how many beeps (2–6)
-  </div>
+  <div id="info">Guess how many beeps (2–6)</div>
 
   <div id="difficulty"></div>
+  <div id="round"></div>
 
   <button id="toggle">Non-linear mode: OFF</button>
 
@@ -95,9 +95,14 @@
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 let minGap = parseFloat(localStorage.getItem("gap")) || 0.55;
+let nonLinear = false;
+
 let roundActive = false;
 let correctAnswer = 0;
-let nonLinear = false;
+
+let round = 0;
+let score = 0;
+const MAX_ROUNDS = 20;
 
 /* ---------- SOUND ---------- */
 
@@ -119,11 +124,26 @@ function playBeep(time) {
   osc.stop(time + 0.25);
 }
 
+/* ---------- UI ---------- */
+
+function getDifficultyLabel() {
+  if (minGap <= 0.45) return "Hard";
+  if (minGap <= 0.65) return "Medium";
+  return "Easy";
+}
+
+function updateUI() {
+  document.getElementById("difficulty").textContent =
+    `Difficulty: ${getDifficultyLabel()} (gap ${minGap.toFixed(2)}s)`;
+
+  document.getElementById("round").textContent =
+    `Round: ${round}/${MAX_ROUNDS} | Score: ${score}`;
+}
+
 /* ---------- GAME ---------- */
 
 function generatePattern(count) {
   const base = minGap;
-
   let times = [audioCtx.currentTime + 0.2];
 
   for (let i = 1; i < count; i++) {
@@ -139,22 +159,21 @@ function generatePattern(count) {
   return times;
 }
 
-function updateDifficultyDisplay() {
-  let label = "Easy";
-
-  if (minGap <= 0.45) label = "Hard";
-  else if (minGap <= 0.65) label = "Medium";
-
-  document.getElementById("difficulty").textContent =
-    `Difficulty: ${label} (gap ${minGap.toFixed(2)}s)`;
-}
+/* ---------- ROUND ---------- */
 
 async function playRound() {
+  if (round >= MAX_ROUNDS) {
+    document.getElementById("status").textContent =
+      `Game over! Final score: ${score}/${MAX_ROUNDS}`;
+    return;
+  }
+
   roundActive = true;
+  round++;
 
   correctAnswer = Math.floor(Math.random() * 5) + 2;
 
-  updateDifficultyDisplay();
+  updateUI();
 
   document.getElementById("status").textContent =
     "Listen carefully...";
@@ -189,17 +208,28 @@ function guess(n) {
   flash(correct);
 
   if (correct) {
+    score++;
+    minGap *= 0.92; // harder
     document.getElementById("status").textContent = "Correct!";
   } else {
+    minGap *= 1.08; // easier (FIXED RESTORED BEHAVIOR)
     document.getElementById("status").textContent =
       "Wrong! It was " + correctAnswer;
   }
 
+  localStorage.setItem("gap", minGap.toString());
+
   roundActive = false;
+  updateUI();
 
   setTimeout(() => {
-    document.getElementById("status").textContent =
-      "Press SPACE to continue";
+    if (round >= MAX_ROUNDS) {
+      document.getElementById("status").textContent =
+        `Game complete! Score: ${score}/${MAX_ROUNDS}`;
+    } else {
+      document.getElementById("status").textContent =
+        "Press SPACE for next round";
+    }
   }, 700);
 }
 
@@ -228,6 +258,10 @@ document.addEventListener("keydown", async (e) => {
     guess(parseInt(e.key));
   }
 });
+
+/* ---------- INIT ---------- */
+updateUI();
+
 </script>
 </body>
 </html>
