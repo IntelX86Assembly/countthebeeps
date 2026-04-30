@@ -28,6 +28,12 @@
   #info {
     font-size: 0.95rem;
     opacity: 0.9;
+    margin-bottom: 6px;
+  }
+
+  #difficulty {
+    font-size: 0.9rem;
+    opacity: 0.8;
     margin-bottom: 10px;
   }
 
@@ -67,17 +73,19 @@
   <h1>Beeps Count</h1>
 
   <div id="info">
-    Guess how many beeps (1–5)
+    Guess how many beeps (2–6)
   </div>
+
+  <div id="difficulty"></div>
 
   <button id="toggle">Non-linear mode: OFF</button>
 
   <div id="choices">
-    <button onclick="guess(1)">1</button>
     <button onclick="guess(2)">2</button>
     <button onclick="guess(3)">3</button>
     <button onclick="guess(4)">4</button>
     <button onclick="guess(5)">5</button>
+    <button onclick="guess(6)">6</button>
   </div>
 
   <div id="status">Press SPACE to play</div>
@@ -122,7 +130,6 @@ function generatePattern(count) {
     let gap = base;
 
     if (nonLinear) {
-      // distortion: random subtle timing shifts
       gap *= (0.6 + Math.random() * 0.9);
     }
 
@@ -132,10 +139,22 @@ function generatePattern(count) {
   return times;
 }
 
+function updateDifficultyDisplay() {
+  let label = "Easy";
+
+  if (minGap <= 0.45) label = "Hard";
+  else if (minGap <= 0.65) label = "Medium";
+
+  document.getElementById("difficulty").textContent =
+    `Difficulty: ${label} (gap ${minGap.toFixed(2)}s)`;
+}
+
 async function playRound() {
   roundActive = true;
 
-  correctAnswer = Math.floor(Math.random() * 5) + 1;
+  correctAnswer = Math.floor(Math.random() * 5) + 2;
+
+  updateDifficultyDisplay();
 
   document.getElementById("status").textContent =
     "Listen carefully...";
@@ -170,15 +189,11 @@ function guess(n) {
   flash(correct);
 
   if (correct) {
-    minGap *= 0.92; // 🔥 difficulty increases
     document.getElementById("status").textContent = "Correct!";
   } else {
-    minGap *= 1.08; // slightly easier if wrong
     document.getElementById("status").textContent =
       "Wrong! It was " + correctAnswer;
   }
-
-  localStorage.setItem("gap", minGap.toString());
 
   roundActive = false;
 
@@ -205,15 +220,17 @@ document.addEventListener("keydown", async (e) => {
     playRound();
   }
 
-  if (["Digit1","Digit2","Digit3","Digit4","Digit5"].includes(e.code)) {
+  if (["Digit2","Digit3","Digit4","Digit5","Digit6"].includes(e.code)) {
     guess(parseInt(e.key));
   }
 
-  if (["Numpad1","Numpad2","Numpad3","Numpad4","Numpad5"].includes(e.code)) {
+  if (["Numpad2","Numpad3","Numpad4","Numpad5","Numpad6"].includes(e.code)) {
     guess(parseInt(e.key));
   }
 });
 </script>
+</body>
+</html>
 
 </body>
 </html>
