@@ -94,7 +94,7 @@
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-/* ---------- STATE MACHINE ---------- */
+/* ---------- STATE ---------- */
 const STATE = {
   IDLE: "idle",
   PLAYING: "playing",
@@ -103,8 +103,6 @@ const STATE = {
 };
 
 let gameState = STATE.IDLE;
-
-/* HARD LOCK (fixes spam issue) */
 let inputLocked = false;
 
 /* ---------- GAME DATA ---------- */
@@ -160,7 +158,8 @@ function generatePattern(count) {
     let gap = base;
 
     if (nonLinear) {
-      gap *= (0.6 + Math.random() * 0.9);
+      // 🔥 stronger variation so it is actually noticeable
+      gap *= (0.4 + Math.random() * 1.4);
     }
 
     times.push(times[i - 1] + gap);
@@ -169,10 +168,9 @@ function generatePattern(count) {
   return times;
 }
 
-/* ---------- START ROUND ---------- */
+/* ---------- ROUND ---------- */
 async function startRound() {
   if (inputLocked) return;
-  if (gameState === STATE.PLAYING) return;
   if (gameState === STATE.GAME_OVER) return;
 
   inputLocked = true;
@@ -193,16 +191,24 @@ async function startRound() {
 
   const times = generatePattern(correctAnswer);
 
+  const lastTime = times[times.length - 1];
+
   for (let t of times) playBeep(t);
 
+  /* 🔥 FIX: unlock based on actual audio end, not fixed timeout */
+  const unlockDelay =
+    (lastTime - audioCtx.currentTime) * 1000 + 250;
+
   setTimeout(() => {
+    gameState = STATE.PLAYING;
+    inputLocked = false;
+
     document.getElementById("status").textContent =
       "How many beeps?";
-    inputLocked = false; // unlock guessing AFTER audio starts
-  }, 500);
+  }, Math.max(300, unlockDelay));
 }
 
-/* ---------- END ROUND ---------- */
+/* ---------- ROUND END ---------- */
 function endRound(correct) {
   gameState = STATE.ROUND_END;
   inputLocked = true;
@@ -232,7 +238,7 @@ function endRound(correct) {
       document.getElementById("status").textContent =
         "Press SPACE for next round";
     }
-  }, 700);
+  }, 500);
 }
 
 /* ---------- GAME OVER ---------- */
@@ -270,10 +276,7 @@ function flash(correct) {
 
 /* ---------- GUESS ---------- */
 function guess(n) {
-  if (gameState !== STATE.PLAYING) return;
-  if (inputLocked) return;
-
-  inputLocked = true;
+  if (gameState !== STATE.PLAYING || inputLocked) return;
 
   const correct = (n === correctAnswer);
   endRound(correct);
@@ -314,4 +317,4 @@ updateUI();
 </script>
 
 </body>
-</html
+</html>
